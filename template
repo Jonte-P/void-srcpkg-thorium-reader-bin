@@ -8,6 +8,8 @@ archs="x86_64"
 distfiles="https://github.com/edrlab/thorium-reader/releases/download/v${version}/Thorium-${version}.AppImage"
 checksum=9fafcb0285a0bf2b49f8cd0b11a779602c4ec8d92179743f09e2de5b6449bb9e
 
+skip_extraction=yes
+
 short_desc="Thorium Reader EPUB reader (official AppImage)"
 maintainer="yourname <you@example.invalid>"
 license="BSD-3-Clause"
