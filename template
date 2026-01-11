@@ -25,9 +25,10 @@ do_extract() {
 do_install() {
 	appimage="Thorium-${version}.AppImage"
 
-	# distfile is usually in the distfiles cache, not /host/sources, since we skip extract
-	for d in "${XBPS_DISTFILES_DIR}" "${XBPS_DISTDIR}" "${XBPS_SRCDISTDIR}" "${wrksrc}" "."; do
-		[ -n "$d" ] || continue
+	# Most reliable locations inside the masterdir:
+	# - /void-packages/hostdir/distfiles (your tree mount)
+	# - /host/distfiles (alternate bind mount used by xbps-src on some setups)
+	for d in "/void-packages/hostdir/distfiles" "/host/distfiles" "." "${wrksrc}"; do
 		if [ -f "${d}/${appimage}" ]; then
 			appimage_path="${d}/${appimage}"
 			break
@@ -35,8 +36,9 @@ do_install() {
 	done
 
 	if [ -z "${appimage_path}" ]; then
-		echo "ERROR: could not find ${appimage} in distfiles/source dirs" >&2
-		echo "Tried: XBPS_DISTFILES_DIR='${XBPS_DISTFILES_DIR}' XBPS_DISTDIR='${XBPS_DISTDIR}' XBPS_SRCDISTDIR='${XBPS_SRCDISTDIR}' wrksrc='${wrksrc}'" >&2
+		echo "ERROR: could not find ${appimage} in distfiles." >&2
+		echo "Looked in: /void-packages/hostdir/distfiles /host/distfiles" >&2
+		echo "Hint: check your host cache: hostdir/distfiles/" >&2
 		return 1
 	fi
 
