@@ -18,13 +18,15 @@ license="BSD-3-Clause"
 homepage="https://www.edrlab.org/software/thorium-reader/"
 nostrip=yes
 
+do_extract() {
+	:
+}
+
 do_install() {
 	# Install AppImage into /opt
-	# So as not to get weird filenames when using skip_extraction, we will add a little alias for the appimage.
-	appimage="Thorium-${version}.AppImage"
 	
 	vmkdir opt/thorium-reader
-	vcopy "${appimage}" "opt/thorium-reader/ThoriumReader.AppImage"
+	vcopy "${XBPS_SRCDISTDIR}/Thorium-${version}.AppImage" "opt/thorium-reader/ThoriumReader.AppImage"
 	chmod 0755 "${DESTDIR}/opt/thorium-reader/ThoriumReader.AppImage"
 
 	# Wrapper in PATH
