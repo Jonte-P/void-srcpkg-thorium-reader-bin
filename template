@@ -1,0 +1,42 @@
+# Template file for 'thorium-reader-bin'
+pkgname=thorium-reader-bin
+version=3.3.0
+revision=1
+archs="x86_64"
+
+# Verify exact filename on each release; adjust if upstream changes it
+distfiles="https://github.com/edrlab/thorium-reader/releases/download/v${version}/Thorium-${version}.AppImage"
+checksum=SKIP
+
+short_desc="Thorium Reader EPUB reader (official AppImage)"
+maintainer="yourname <you@example.invalid>"
+license="BSD-3-Clause"
+homepage="https://www.edrlab.org/software/thorium-reader/"
+nostrip=yes
+
+do_install() {
+	# Install AppImage into /opt
+	vmkdir opt/thorium-reader
+	vcopy "Thorium-${version}.AppImage" "opt/thorium-reader/ThoriumReader.AppImage"
+	chmod 0755 "${DESTDIR}/opt/thorium-reader/ThoriumReader.AppImage"
+
+	# Wrapper in PATH
+	vmkdir usr/bin
+	cat > "${DESTDIR}/usr/bin/thorium-reader" <<'EOF'
+#!/bin/sh
+exec /opt/thorium-reader/ThoriumReader.AppImage "$@"
+EOF
+	chmod 0755 "${DESTDIR}/usr/bin/thorium-reader"
+
+	# Desktop entry
+	vmkdir usr/share/applications
+	cat > "${DESTDIR}/usr/share/applications/thorium-reader.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Thorium Reader
+Comment=EPUB reader
+Exec=thorium-reader %u
+Terminal=false
+Categories=Office;Education;Viewer;
+EOF
+}
