@@ -23,10 +23,25 @@ do_extract() {
 }
 
 do_install() {
-	# Install AppImage into /opt
-	
+	appimage="Thorium-${version}.AppImage"
+
+	# distfile is usually in the distfiles cache, not /host/sources, since we skip extract
+	for d in "${XBPS_DISTFILES_DIR}" "${XBPS_DISTDIR}" "${XBPS_SRCDISTDIR}" "${wrksrc}" "."; do
+		[ -n "$d" ] || continue
+		if [ -f "${d}/${appimage}" ]; then
+			appimage_path="${d}/${appimage}"
+			break
+		fi
+	done
+
+	if [ -z "${appimage_path}" ]; then
+		echo "ERROR: could not find ${appimage} in distfiles/source dirs" >&2
+		echo "Tried: XBPS_DISTFILES_DIR='${XBPS_DISTFILES_DIR}' XBPS_DISTDIR='${XBPS_DISTDIR}' XBPS_SRCDISTDIR='${XBPS_SRCDISTDIR}' wrksrc='${wrksrc}'" >&2
+		return 1
+	fi
+
 	vmkdir opt/thorium-reader
-	vcopy "${XBPS_SRCDISTDIR}/Thorium-${version}.AppImage" "opt/thorium-reader/ThoriumReader.AppImage"
+	vcopy "${appimage_path}" "opt/thorium-reader/ThoriumReader.AppImage"
 	chmod 0755 "${DESTDIR}/opt/thorium-reader/ThoriumReader.AppImage"
 
 	# Wrapper in PATH
