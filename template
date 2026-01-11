@@ -23,6 +23,12 @@ do_extract() {
 }
 
 do_install() {
+	# NOTE:
+	# Thorium Reader is distributed as an AppImage.
+	# We override do_extract() and copy directly from
+	# ${XBPS_SRCDISTDIR}/${pkgname}-${version}/ because
+	# xbps-src does not recognize .AppImage as an archive.
+
 	df="${distfiles##*/}"
 	srcdir="${XBPS_SRCDISTDIR}/${pkgname}-${version}"
 
