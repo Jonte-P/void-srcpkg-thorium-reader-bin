@@ -23,27 +23,18 @@ do_extract() {
 }
 
 do_install() {
-	appimage="Thorium-${version}.AppImage"
+	df="${distfiles##*/}"
+	srcdir="${XBPS_SRCDISTDIR}/${pkgname}-${version}"
 
-	# Most reliable locations inside the masterdir:
-	# - /void-packages/hostdir/distfiles (your tree mount)
-	# - /host/distfiles (alternate bind mount used by xbps-src on some setups)
-	for d in "/void-packages/hostdir/distfiles" "/host/distfiles" "." "${wrksrc}"; do
-		if [ -f "${d}/${appimage}" ]; then
-			appimage_path="${d}/${appimage}"
-			break
-		fi
-	done
-
-	if [ -z "${appimage_path}" ]; then
-		echo "ERROR: could not find ${appimage} in distfiles." >&2
-		echo "Looked in: /void-packages/hostdir/distfiles /host/distfiles" >&2
-		echo "Hint: check your host cache: hostdir/distfiles/" >&2
+	if [ ! -f "${srcdir}/${df}" ]; then
+		echo "ERROR: missing distfile: ${srcdir}/${df}" >&2
+		echo "SRCDISTDIR=${XBPS_SRCDISTDIR}" >&2
+		ls -lah "${srcdir}" >&2 || true
 		return 1
 	fi
 
 	vmkdir opt/thorium-reader
-	vcopy "${appimage_path}" "opt/thorium-reader/ThoriumReader.AppImage"
+	vcopy "${srcdir}/${df}" "opt/thorium-reader/ThoriumReader.AppImage"
 	chmod 0755 "${DESTDIR}/opt/thorium-reader/ThoriumReader.AppImage"
 
 	# Wrapper in PATH
