@@ -18,8 +18,11 @@ nostrip=yes
 
 do_install() {
 	# Install AppImage into /opt
+	# So as not to get weird filenames when using skip_extraction, we will add a little alias for the appimage.
+	appimage="Thorium-${version}.AppImage"
+	
 	vmkdir opt/thorium-reader
-	vcopy "Thorium-${version}.AppImage" "opt/thorium-reader/ThoriumReader.AppImage"
+	vcopy "${appimage}" "opt/thorium-reader/ThoriumReader.AppImage"
 	chmod 0755 "${DESTDIR}/opt/thorium-reader/ThoriumReader.AppImage"
 
 	# Wrapper in PATH
