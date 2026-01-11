@@ -3,6 +3,11 @@ pkgname=thorium-reader-bin
 version=3.3.0
 revision=1
 archs="x86_64"
+# NOTE:
+# Thorium Reader is distributed as an AppImage.
+# We override do_extract() and copy directly from
+# ${XBPS_SRCDISTDIR}/${pkgname}-${version}/ because
+# xbps-src does not recognize .AppImage as an archive.
 
 # Verify exact filename on each release; adjust if upstream changes it
 distfiles="https://github.com/edrlab/thorium-reader/releases/download/v${version}/Thorium-${version}.AppImage"
@@ -16,6 +21,7 @@ short_desc="Thorium Reader EPUB reader (official AppImage)"
 maintainer="yourname <you@example.invalid>"
 license="BSD-3-Clause"
 homepage="https://www.edrlab.org/software/thorium-reader/"
+hostmakedepends="squashfs-tools"
 nostrip=yes
 
 do_extract() {
@@ -23,27 +29,22 @@ do_extract() {
 }
 
 do_install() {
-	# NOTE:
-	# Thorium Reader is distributed as an AppImage.
-	# We override do_extract() and copy directly from
-	# ${XBPS_SRCDISTDIR}/${pkgname}-${version}/ because
-	# xbps-src does not recognize .AppImage as an archive.
-
 	df="${distfiles##*/}"
 	srcdir="${XBPS_SRCDISTDIR}/${pkgname}-${version}"
+	appimage_src="${srcdir}/${df}"
 
-	if [ ! -f "${srcdir}/${df}" ]; then
-		echo "ERROR: missing distfile: ${srcdir}/${df}" >&2
-		echo "SRCDISTDIR=${XBPS_SRCDISTDIR}" >&2
+	if [ ! -f "${appimage_src}" ]; then
+		echo "ERROR: missing distfile: ${appimage_src}" >&2
 		ls -lah "${srcdir}" >&2 || true
 		return 1
 	fi
 
+	# 1) Install the AppImage itself
 	vmkdir opt/thorium-reader
-	vcopy "${srcdir}/${df}" "opt/thorium-reader/ThoriumReader.AppImage"
+	vcopy "${appimage_src}" "opt/thorium-reader/ThoriumReader.AppImage"
 	chmod 0755 "${DESTDIR}/opt/thorium-reader/ThoriumReader.AppImage"
 
-	# Wrapper in PATH
+	# 2) Wrapper in PATH
 	vmkdir usr/bin
 	cat > "${DESTDIR}/usr/bin/thorium-reader" <<'EOF'
 #!/bin/sh
@@ -51,9 +52,23 @@ exec /opt/thorium-reader/ThoriumReader.AppImage "$@"
 EOF
 	chmod 0755 "${DESTDIR}/usr/bin/thorium-reader"
 
-	# Desktop entry
+	# 3) Extract AppImage contents (for icons/desktop metadata)
+	# AppImage is an ELF wrapper with a SquashFS appended.
+	# unsquashfs wants the SquashFS offset.
+	offset="$(dd if="${appimage_src}" bs=1 skip=8 count=8 2>/dev/null | od -An -t u8 | tr -d ' ')"
+	if [ -n "${offset}" ]; then
+		mkdir -p "${wrksrc}/squashfs-root"
+		# unsquashfs expects a file it can seek into; use -o for offset
+		unsquashfs -q -f -o "${offset}" -d "${wrksrc}/squashfs-root" "${appimage_src}" || true
+	fi
+
+	# 4) Desktop file (prefer upstream’s if present)
 	vmkdir usr/share/applications
-	cat > "${DESTDIR}/usr/share/applications/thorium-reader.desktop" <<'EOF'
+	if [ -f "${wrksrc}/squashfs-root/thorium-reader.desktop" ]; then
+		vcopy "${wrksrc}/squashfs-root/thorium-reader.desktop" "usr/share/applications/"
+	else
+		# fallback minimal desktop entry + MIME types
+		cat > "${DESTDIR}/usr/share/applications/thorium-reader.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Thorium Reader
@@ -61,5 +76,34 @@ Comment=EPUB reader
 Exec=thorium-reader %u
 Terminal=false
 Categories=Office;Education;Viewer;
+MimeType=application/epub+zip;application/x-mobipocket-ebook;application/pdf;
 EOF
+	fi
+
+	# 5) Icons (try common locations inside extracted tree)
+	# We install a few sizes if we can find them.
+	for size in 512 256 128 64 48 32; do
+		for cand in \
+			"${wrksrc}/squashfs-root/usr/share/icons/hicolor/${size}x${size}/apps/"*thorium*".png" \
+			"${wrksrc}/squashfs-root/usr/share/pixmaps/"*thorium*".png" \
+			"${wrksrc}/squashfs-root/"*".png"
+		do
+			if [ -f "${cand}" ]; then
+				vmkdir "usr/share/icons/hicolor/${size}x${size}/apps"
+				cp -a "${cand}" "${DESTDIR}/usr/share/icons/hicolor/${size}x${size}/apps/thorium-reader.png"
+				break 2
+			fi
+		done
+	done
+
+	# As a last resort, provide a pixmap entry if we found any icon at all
+	if [ ! -f "${DESTDIR}/usr/share/icons/hicolor/128x128/apps/thorium-reader.png" ]; then
+		for cand in "${wrksrc}/squashfs-root/usr/share/pixmaps/"*".png"; do
+			if [ -f "${cand}" ]; then
+				vmkdir usr/share/pixmaps
+				cp -a "${cand}" "${DESTDIR}/usr/share/pixmaps/thorium-reader.png"
+				break
+			fi
+		done
+	fi
 }
